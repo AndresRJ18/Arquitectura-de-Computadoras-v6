@@ -1,0 +1,66 @@
+#include <SPI.h>
+#include <RF24.h>
+
+// Pines del NRF24L01
+#define CE_PIN 10
+#define CSN_PIN 9
+
+// Pines del joystick
+#define VRX A0
+#define VRY A1
+#define SW 2
+
+// Pin del botón adicional
+#define BUTTON_PIN 7
+
+// Crear objeto RF24
+RF24 radio(CE_PIN, CSN_PIN);
+
+// Dirección de comunicación
+const uint64_t pipeAddress = 0xF0F0F0F0E1LL;
+
+// Estructura para enviar datos
+struct ControlData {
+  int x;       // Valor del eje X del joystick
+  int y;       // Valor del eje Y del joystick
+  bool button; // Estado del botón del joystick
+  bool extraButton; // Estado del botón adicional
+};
+
+ControlData controlData;
+
+void setup() {
+  Serial.begin(9600);
+
+  // Configuración NRF24L01
+  radio.begin();
+  radio.openWritingPipe(pipeAddress);
+  radio.setPALevel(RF24_PA_HIGH);
+  radio.setDataRate(RF24_1MBPS);
+
+  // Configuración de pines
+  pinMode(SW, INPUT_PULLUP);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+  Serial.println("Control listo.");
+}
+
+void loop() {
+  // Leer valores del joystick
+  controlData.x = analogRead(VRX);
+  controlData.y = analogRead(VRY);
+  controlData.button = digitalRead(SW) == LOW;
+  controlData.extraButton = digitalRead(BUTTON_PIN) == LOW;
+
+  // Enviar datos
+  bool success = radio.write(&controlData, sizeof(controlData));
+  if (success) {
+    Serial.println("Datos enviados.");
+  } else {
+    Serial.println("Error al enviar.");
+  }
+
+  delay(100); // Pequeña pausa antes de 
+
+enviar nuevamente
+}
