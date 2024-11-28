@@ -1,0 +1,127 @@
+#include <SPI.h>
+#include <RF24.h>
+
+// Pines del NRF24L01
+#define CE_PIN 10
+#define CSN_PIN 9
+
+// Pines del puente H
+#define IN1 3
+#define IN2 4
+#define IN3 5
+#define IN4 6
+
+// Pines del sensor ultrasónico
+#define TRIG_PIN 7
+#define ECHO_PIN 8
+
+// Crear objeto RF24
+RF24 radio(CE_PIN, CSN_PIN);
+
+// Dirección de comunicación
+const uint64_t pipeAddress = 0xF0F0F0F0E1LL;
+
+// Estructura para recibir datos
+struct ControlData {
+  int x;
+  int y;
+  bool button;
+  bool extraButton;
+};
+
+ControlData controlData;
+
+void setup() {
+  Serial.begin(9600);
+
+  // Configuración NRF24L01
+  radio.begin();
+  radio.openReadingPipe(1, pipeAddress);
+  radio.setPALevel(RF24_PA_HIGH);
+  radio.setDataRate(RF24_1MBPS);
+  radio.startListening();
+
+  // Configuración de pines del puente H
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  // Configuración de pines del sensor ultrasónico
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  Serial.println("Carro listo.");
+}
+
+void loop() {
+  if (radio.available()) {
+    radio.read(&controlData, sizeof(controlData));
+
+    Serial.print("X: ");
+    Serial.print(controlData.x);
+    Serial.print(" Y: ");
+    Serial.print(controlData.y);
+    Serial.print(" Button: ");
+    Serial.print(controlData.button);
+    Serial.print(" ExtraButton: ");
+    Serial.println(controlData.extraButton);
+
+    if (controlData.extraButton) {
+      detenerse();
+      Serial.println("Comando especial activado.");
+    } else {
+      manejarMovimiento(controlData.x, controlData.y);
+    }
+  }
+}
+
+void manejarMovimiento(int x, int y) {
+  if (y > 600) { // Avanzar
+    moverAdelante();
+  } else if (y < 400) { // Retroceder
+    moverAtras();
+  } else if (x > 600) { // Derecha
+    moverDerecha();
+  } else if (x < 400) { // Izquierda
+    moverIzquierda();
+  } else {
+    detenerse();
+  }
+}
+
+void moverAdelante() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void moverAtras() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void moverIzquierda() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void moverDerecha() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void detenerse() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
+
